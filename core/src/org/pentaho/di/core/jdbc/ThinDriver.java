@@ -22,16 +22,12 @@
 
 package org.pentaho.di.core.jdbc;
 
-import org.pentaho.di.core.KettleClientEnvironment;
-
 import java.sql.Connection;
 import java.sql.Driver;
-import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -45,41 +41,32 @@ public class ThinDriver implements Driver {
 
   public static final String BASE_URL = "jdbc:pdi://";
   public static final String SERVICE_NAME = "/kettle";
+  public static final String ALT_DRIVER = "org.pentaho.di.trans.dataservice.jdbc.ThinDriver";
+  private static final Logger logger = Logger.getLogger( ThinDriver.class.getName() );
 
   static {
+    warnDeprecated();
     try {
-      KettleClientEnvironment.init();
-      DriverManager.registerDriver( new ThinDriver() );
-    } catch ( Exception e ) {
-      throw new RuntimeException( "Something went wrong registering the thin Kettle JDBC driver", e );
+      // Try to activate new Driver
+      Class.forName( ALT_DRIVER );
+    } catch ( ClassNotFoundException e ) {
+      logger.warning( ALT_DRIVER + " is not installed. Please add pdi-dataservice-client to your classpath." );
     }
   }
 
-  public ThinDriver() throws SQLException {
+  public ThinDriver() {
+    warnDeprecated();
   }
 
   @Override
-  public boolean acceptsURL( String url ) throws SQLException {
-    return url.startsWith( BASE_URL );
+  public boolean acceptsURL( String url ) {
+    return false;
   }
 
   @Override
-  public Connection connect( String url, Properties properties ) throws SQLException {
-    String username = properties.getProperty( "user" );
-    String password = properties.getProperty( "password" );
-
-    Logger.getLogger( getClass().getName() ).log( Level.WARNING,
-      getClass().getName() + " has been deprecated and is scheduled for removal in 6.1. "
-        + "Please use org.pentaho.di.trans.dataservice.jdbc.ThinDriver instead."
-    );
-
-    if ( acceptsURL( url ) ) {
-      ThinConnection connection = new ThinConnection( url, username, password );
-      connection.testConnection();
-      return connection;
-    } else {
-      return null;
-    }
+  public Connection connect( String url, Properties properties ) {
+    warnDeprecated();
+    return null;
   }
 
   @Override
@@ -103,7 +90,11 @@ public class ThinDriver implements Driver {
   }
 
   public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-    return null;
+    return logger;
+  }
+
+  private static void warnDeprecated() {
+    logger.warning( ThinDriver.class + " has been deprecated. Please use " + ALT_DRIVER + " instead." );
   }
 
 }
