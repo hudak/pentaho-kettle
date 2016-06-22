@@ -23,38 +23,7 @@
 
 package org.pentaho.di.ui.spoon;
 
-import java.awt.Desktop;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.swing.UIManager;
-import javax.swing.plaf.metal.MetalLookAndFeel;
-
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.vfs2.FileObject;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
@@ -194,6 +163,7 @@ import org.pentaho.di.core.row.RowMeta;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.ValueMeta;
 import org.pentaho.di.core.row.ValueMetaInterface;
+import org.pentaho.di.core.undo.RunnableTransAction;
 import org.pentaho.di.core.undo.TransAction;
 import org.pentaho.di.core.util.StringUtil;
 import org.pentaho.di.core.variables.VariableSpace;
@@ -344,7 +314,36 @@ import org.pentaho.xul.swt.tab.TabSet;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
-import com.google.common.annotations.VisibleForTesting;
+import javax.swing.UIManager;
+import javax.swing.plaf.metal.MetalLookAndFeel;
+import java.awt.Desktop;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class handles the main window of the Spoon graphical transformation editor.
@@ -7277,7 +7276,9 @@ public class Spoon extends ApplicationWindow implements AddUndoPositionInterface
 
     setUndoMenu( undoInterface ); // something changed: change the menu
 
-    if ( undoInterface instanceof TransMeta ) {
+    if( ta instanceof RunnableTransAction ){
+      ( (RunnableTransAction) ta ).undo();
+    } else if ( undoInterface instanceof TransMeta ) {
       delegates.trans.undoTransformationAction( (TransMeta) undoInterface, ta );
       if ( ta.getType() == TransAction.TYPE_ACTION_DELETE_STEP ) {
         setUndoMenu( undoInterface ); // something changed: change the menu
@@ -7288,8 +7289,7 @@ public class Spoon extends ApplicationWindow implements AddUndoPositionInterface
         }
       }
 
-    }
-    if ( undoInterface instanceof JobMeta ) {
+    } else if ( undoInterface instanceof JobMeta ) {
       delegates.jobs.undoJobAction( (JobMeta) undoInterface, ta );
       if ( ta.getType() == TransAction.TYPE_ACTION_DELETE_JOB_ENTRY ) {
         setUndoMenu( undoInterface ); // something changed: change the menu
@@ -7324,7 +7324,9 @@ public class Spoon extends ApplicationWindow implements AddUndoPositionInterface
 
     setUndoMenu( undoInterface ); // something changed: change the menu
 
-    if ( undoInterface instanceof TransMeta ) {
+    if( ta instanceof RunnableTransAction ){
+      ( (RunnableTransAction) ta ).redo();
+    } else if ( undoInterface instanceof TransMeta ) {
       delegates.trans.redoTransformationAction( (TransMeta) undoInterface, ta );
       if ( ta.getType() == TransAction.TYPE_ACTION_DELETE_HOP ) {
         setUndoMenu( undoInterface ); // something changed: change the menu
@@ -7334,9 +7336,7 @@ public class Spoon extends ApplicationWindow implements AddUndoPositionInterface
           delegates.trans.redoTransformationAction( (TransMeta) undoInterface, ta );
         }
       }
-
-    }
-    if ( undoInterface instanceof JobMeta ) {
+    } else if ( undoInterface instanceof JobMeta ) {
       delegates.jobs.redoJobAction( (JobMeta) undoInterface, ta );
       if ( ta.getType() == TransAction.TYPE_ACTION_DELETE_JOB_HOP ) {
         setUndoMenu( undoInterface ); // something changed: change the menu

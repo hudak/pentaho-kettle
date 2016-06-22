@@ -23,7 +23,6 @@
 package org.pentaho.di.base;
 
 import com.google.common.collect.ImmutableList;
-
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.AttributesInterface;
 import org.pentaho.di.core.Const;
@@ -648,6 +647,10 @@ public abstract class AbstractMeta implements ChangedFlagInterface, UndoInterfac
   @Override
   public void addUndo( Object[] from, Object[] to, int[] pos, Point[] prev, Point[] curr, int type_of_change,
                        boolean nextAlso ) {
+    addUndo( createTransAction( from, to, pos, prev, curr, type_of_change ) );
+  }
+
+  public void addUndo( TransAction ta ) {
     // First clean up after the current position.
     // Example: position at 3, size=5
     // 012345
@@ -660,7 +663,17 @@ public abstract class AbstractMeta implements ChangedFlagInterface, UndoInterfac
       int last = undo.size() - 1;
       undo.remove( last );
     }
+    undo.add( ta );
+    undo_position++;
 
+    if ( undo.size() > max_undo ) {
+      undo.remove( 0 );
+      undo_position--;
+    }
+  }
+
+  public TransAction createTransAction( Object[] from, Object[] to, int[] pos, Point[] prev, Point[] curr,
+                                        int type_of_change ) {
     TransAction ta = new TransAction();
     switch ( type_of_change ) {
       case TYPE_UNDO_CHANGE:
@@ -678,13 +691,7 @@ public abstract class AbstractMeta implements ChangedFlagInterface, UndoInterfac
       default:
         break;
     }
-    undo.add( ta );
-    undo_position++;
-
-    if ( undo.size() > max_undo ) {
-      undo.remove( 0 );
-      undo_position--;
-    }
+    return ta;
   }
 
   /**
@@ -1220,7 +1227,8 @@ public abstract class AbstractMeta implements ChangedFlagInterface, UndoInterfac
   }
 
   @Override
-  public String fieldSubstitute( String aString, RowMetaInterface rowMeta, Object[] rowData ) throws KettleValueException {
+  public String fieldSubstitute( String aString, RowMetaInterface rowMeta, Object[] rowData )
+    throws KettleValueException {
     return variables.fieldSubstitute( aString, rowMeta, rowData );
   }
 
