@@ -18,6 +18,7 @@
 
   <modules>
     <module>kettle-native</module>
+    <module>spark</module>
   </modules>
 
 </project>

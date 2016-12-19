@@ -10,7 +10,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>kettle-native</artifactId>
+  <artifactId>pdi-execution-engine-native</artifactId>
   <version>7.1-SNAPSHOT</version>
 
   <dependencies>
