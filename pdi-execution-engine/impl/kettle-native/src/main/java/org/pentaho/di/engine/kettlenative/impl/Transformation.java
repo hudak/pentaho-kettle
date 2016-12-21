@@ -19,7 +19,7 @@ public class Transformation implements ITransformation {
 
   private Transformation( TransMeta transMeta ) {
     this.transMeta = transMeta;
-    operations =  opConverter.apply( transMeta );
+    operations = opConverter.apply( transMeta );
   }
 
   public static ITransformation convert( TransMeta transMeta ) {
@@ -43,7 +43,10 @@ public class Transformation implements ITransformation {
   }
 
   @Override public List<IHop> getHops() {
-    return null;
+    return getOperations().stream()
+      .map( IOperation::getHopsOut )
+      .flatMap( List::stream )
+      .collect( Collectors.toList() );
   }
 
   @Override public String getConfig() {

@@ -2,6 +2,7 @@ package org.pentaho.spark.engine
 
 import java.util.concurrent.TimeUnit
 
+import org.apache.spark.SparkConf
 import org.pentaho.di.core.KettleEnvironment
 import org.pentaho.di.engine.kettlenative.impl.Transformation
 import org.pentaho.di.trans.Trans
@@ -44,9 +45,11 @@ object DeadSimpleTransformation extends App {
   //    trans.waitUntilFinished()
 
   val nativeTrans = Transformation.convert(transformation.meta)
-  val engine = new SparkEngine
+
+  private val conf = new SparkConf().setAppName("Simple Transformation").setMaster("local")
+  val engine = new SparkEngine(conf, NativeKettleOperation.compiler(), Wiring.default())
 
   val result = engine.execute(nativeTrans).get(20, TimeUnit.SECONDS)
-  //
-  //    result.getDataEventReport.asScala foreach (println(_))
+
+  result.getDataEventReport.asScala foreach (println(_))
 }

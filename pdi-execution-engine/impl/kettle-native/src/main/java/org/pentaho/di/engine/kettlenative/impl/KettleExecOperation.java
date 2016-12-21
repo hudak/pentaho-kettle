@@ -177,11 +177,10 @@ public class KettleExecOperation implements IExecutableOperation {
       @Override
       public void stepFinished( Trans trans, StepMeta stepMeta, StepInterface step ) {
         done.set( true );
-        subscribers.stream()
-          .forEach( sub -> {
-            sub.onNext( KettleDataEvent.complete( KettleExecOperation.this ) ); // terminal row
-            sub.onComplete();
-          } );
+        subscribers.forEach( sub -> {
+          sub.onNext( KettleDataEvent.complete( KettleExecOperation.this ) ); // terminal row
+          sub.onComplete();
+        } );
 
       }
     } );
@@ -214,9 +213,11 @@ public class KettleExecOperation implements IExecutableOperation {
         return super.putRow( rowMeta, rowData );
       }
 
-      private Optional<Subscriber<? super IDataEvent>> getSubscriber() {
+      private Optional<IExecutableOperation> getSubscriber() {
         return KettleExecOperation.this.subscribers.stream()
-          .filter( sub -> ( (KettleExecOperation) sub ).getId().equals( next.getName() ) )
+          .filter( IExecutableOperation.class::isInstance )
+          .map( IExecutableOperation.class::cast )
+          .filter( sub -> sub.getId().equals( next.getName() ) )
           .findFirst();
       }
     };
