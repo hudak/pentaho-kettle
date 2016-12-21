@@ -1,6 +1,9 @@
 package org.pentaho.spark.engine
 
+import java.util.concurrent.TimeUnit
+
 import org.pentaho.di.core.KettleEnvironment
+import org.pentaho.di.engine.kettlenative.impl.Transformation
 import org.pentaho.di.trans.Trans
 import org.pentaho.di.trans.steps.datagrid.DataGridMeta
 import org.pentaho.di.trans.steps.writetolog.WriteToLogMeta
@@ -11,7 +14,9 @@ import scala.util.Random
 /**
   * Created by hudak on 12/14/16.
   */
-object DeadSimpleTransformation {
+object DeadSimpleTransformation extends App {
+  KettleEnvironment.init()
+
   private val fields = Array("ID, Name")
 
   val input: StepDefinition[DataGridMeta] = StepDefinition("Data Grid", new DataGridMeta) { meta =>
@@ -32,13 +37,16 @@ object DeadSimpleTransformation {
 
   val transformation = SequentialTransformation(input, output)
 
-  def main(args: Array[String]): Unit = {
-    KettleEnvironment.init()
+  val trans = new Trans(transformation.meta)
+  //    trans.prepareExecution(null)
+  //    trans.startThreads()
+  //
+  //    trans.waitUntilFinished()
 
-    val trans = new Trans(transformation.meta)
-    trans.prepareExecution(null)
-    trans.startThreads()
+  val nativeTrans = Transformation.convert(transformation.meta)
+  val engine = new SparkEngine
 
-    trans.waitUntilFinished()
-  }
+  val result = engine.execute(nativeTrans).get(20, TimeUnit.SECONDS)
+  //
+  //    result.getDataEventReport.asScala foreach (println(_))
 }

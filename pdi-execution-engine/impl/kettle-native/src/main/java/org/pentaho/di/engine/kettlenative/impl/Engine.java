@@ -7,14 +7,11 @@ import org.pentaho.di.engine.api.IDataEvent;
 import org.pentaho.di.engine.api.IEngine;
 import org.pentaho.di.engine.api.IExecutableOperation;
 import org.pentaho.di.engine.api.IExecutionResult;
-import org.pentaho.di.engine.api.IExecutionResultFuture;
 import org.pentaho.di.engine.api.IOperation;
-import org.pentaho.di.engine.api.IProgressReporting;
 import org.pentaho.di.engine.api.ITransformation;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -47,12 +44,11 @@ public class Engine implements IEngine {
 
   private void wireExecution( List<IExecutableOperation> execOps ) {
     // for each operation, subscribe to the set of "from" ops.
-    execOps.stream()
-      .forEach( op ->
-        op.getFrom().stream()
-          .map( fromOp -> getExecOp( fromOp, execOps ) )
-          .forEach( fromExecOp -> fromExecOp.subscribe( op ) )
-      );
+    execOps.forEach( op ->
+      op.getFrom().stream()
+        .map( fromOp -> getExecOp( fromOp, execOps ) )
+        .forEach( fromExecOp -> fromExecOp.subscribe( op ) )
+    );
   }
 
   private IExecutableOperation getExecOp( IOperation op, List<IExecutableOperation> execOps ) {
@@ -68,28 +64,23 @@ public class Engine implements IEngine {
       .map( op -> getExecOp( op, execOps ) );
   }
 
-  public IExecutionResult getResult( ITransformation trans, List<IExecutableOperation> execOps )
+  private IExecutionResult getResult( ITransformation trans, List<IExecutableOperation> execOps )
     throws InterruptedException, ExecutionException {
     CountDownLatch countdown = new CountDownLatch( execOps.size() );
     CountdownSubscriber subscriber =
       new CountdownSubscriber( countdown );
 
     // Subscribe to each operation so we can hook into completion
-    execOps.stream()
-      .forEach( op -> op.subscribe( subscriber ) );
+    execOps.forEach( op -> op.subscribe( subscriber ) );
 
     // invoke each source operation
-    sourceExecOpsStream( trans, execOps )
-      .forEach(
-        execOp -> execOp.onNext( KettleDataEvent.empty() ) );
+    sourceExecOpsStream( trans, execOps ).forEach( execOp -> execOp.onNext( KettleDataEvent.empty() ) );
 
     // wait for all operations to complete
     countdown.await();
 
     //return results
-    return () -> ImmutableList.<IProgressReporting<IDataEvent>>builder()
-      .addAll( execOps )
-      .build();
+    return () -> ImmutableList.copyOf( execOps );
   }
 
   private class CountdownSubscriber implements Subscriber<IDataEvent> {

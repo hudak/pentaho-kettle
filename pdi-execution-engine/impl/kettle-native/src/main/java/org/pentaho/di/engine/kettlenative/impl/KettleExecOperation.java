@@ -34,7 +34,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,7 +43,7 @@ public class KettleExecOperation implements IExecutableOperation {
 
   private final IOperation operation;
   private final Trans trans;
-  private final ExecutorService executor;
+  private final Executor executor;
   private List<Subscriber<? super IDataEvent>> subscribers = new ArrayList<>();
   private AtomicBoolean done = new AtomicBoolean( false );
   private StepDataInterface data;
@@ -53,18 +53,17 @@ public class KettleExecOperation implements IExecutableOperation {
 
   private AtomicBoolean started = new AtomicBoolean( false );
 
-  protected KettleExecOperation( IOperation op, ITransformation transformation, ExecutorService executorService ) {
+  protected KettleExecOperation( IOperation op, ITransformation transformation, Executor executor ) {
     this.operation = op;
     trans = createTrans();
     transMeta = getTransMeta( op, transformation );
     stepMeta = transMeta.findStep( op.getId() );
-    this.executor = executorService;
+    this.executor = executor;
     initializeStepMeta();
   }
 
-  public static KettleExecOperation compile( IOperation operation, ITransformation trans,
-                                             ExecutorService executorService ) {
-    return new KettleExecOperation( operation, trans, executorService );
+  public static KettleExecOperation compile( IOperation operation, ITransformation trans, Executor executor ) {
+    return new KettleExecOperation( operation, trans, executor );
   }
 
   @Override public void subscribe( Subscriber<? super IDataEvent> subscriber ) {
@@ -148,7 +147,7 @@ public class KettleExecOperation implements IExecutableOperation {
     combi.step = step;
     combi.meta = stepMeta.getStepMetaInterface();
     combi.data = data;
-    executor.submit( new RunThread( combi ) );
+    executor.execute( new RunThread( combi ) );
   }
 
   private void initializeStepMeta() {
