@@ -18,6 +18,7 @@ object Wiring {
   def default() = Wiring { (execution, from, to) =>
     (from, to) match {
       case (from: Publisher[IDataEvent], to: Subscriber[IDataEvent]) => from.subscribe(to)
+      case (from: LazyResult[KettleRowRDD], to: LazySource[KettleRowRDD]) => from.subscribe(to)
       case (_, _) => sys.error(s"Unable to wire $from to $to")
     }
   }

@@ -1,6 +1,7 @@
 package org.pentaho.spark
 
-import org.pentaho.di.engine.api.{IDataEvent, IProgressReporting}
+import org.apache.spark.rdd.RDD
+import org.pentaho.di.engine.api.{IData, IDataEvent, IProgressReporting}
 
 /**
   * Created by hudak on 12/21/16.
@@ -8,4 +9,5 @@ import org.pentaho.di.engine.api.{IDataEvent, IProgressReporting}
 package object engine {
 
   type EventReport = IProgressReporting[IDataEvent]
+  type KettleRowRDD = RDD[IData[_]]
 }

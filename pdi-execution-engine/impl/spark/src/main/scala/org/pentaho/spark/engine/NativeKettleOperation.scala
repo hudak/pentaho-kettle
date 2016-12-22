@@ -10,8 +10,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   * Created by hudak on 12/21/16.
   */
 class NativeKettleOperation(op: IOperation, trans: ITransformation)
-  extends KettleExecOperation(op, trans, ExecutionContext.global)
-    with Operation {
+  extends KettleExecOperation(op, trans, ExecutionContext.global) with Operation {
 
   override val id: String = getId
 
