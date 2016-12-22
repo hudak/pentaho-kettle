@@ -10,12 +10,16 @@ case class SequentialTransformation(stepDefinitions: Seq[StepDefinition[_]]) {
   val meta: TransMeta = new TransMeta
 
   // Add each step definition to meta
-  stepDefinitions map (_.toStepMeta) foreach meta.addStep
+  for ((stepDef, i) <- stepDefinitions.zipWithIndex) {
+    val stepMeta = stepDef.toStepMeta
+    stepMeta.setLocation(0, 100 * i)
+    meta.addStep(stepMeta)
+  }
 
   // Link sequentially with hops
-  for {
-    (from, to) <- meta.getStepsArray zip meta.getStepsArray.drop(1)
-  } meta.addTransHop(new TransHopMeta(from, to))
+  for ((from, to) <- meta.getStepsArray zip meta.getStepsArray.drop(1)) {
+    meta.addTransHop(new TransHopMeta(from, to))
+  }
 }
 
 object SequentialTransformation {

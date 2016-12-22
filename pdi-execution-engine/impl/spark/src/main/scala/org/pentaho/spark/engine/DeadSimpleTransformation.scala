@@ -18,7 +18,7 @@ import scala.util.Random
 object DeadSimpleTransformation extends App {
   KettleEnvironment.init()
 
-  private val fields = Array("ID, Name")
+  private val fields = Array("ID", "Name")
 
   val input: StepDefinition[DataGridMeta] = StepDefinition("Data Grid", new DataGridMeta) { meta =>
     meta.allocate(2)
