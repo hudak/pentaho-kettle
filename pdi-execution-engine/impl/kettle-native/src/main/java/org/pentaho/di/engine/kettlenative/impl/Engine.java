@@ -6,30 +6,24 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.core.exception.KettleException;
-import org.pentaho.di.engine.api.IDataEvent;
 import org.pentaho.di.engine.api.IEngine;
 import org.pentaho.di.engine.api.IExecutableOperation;
 import org.pentaho.di.engine.api.IExecutableOperationFactory;
 import org.pentaho.di.engine.api.IExecutionContext;
 import org.pentaho.di.engine.api.IExecutionResult;
 import org.pentaho.di.engine.api.IOperation;
-import org.pentaho.di.engine.api.IProgressReporting;
 import org.pentaho.di.engine.api.ITransformation;
+import org.pentaho.di.engine.api.Status;
 import org.pentaho.di.engine.kettlenative.impl.factories.KettleExecOperationFactory;
-import org.pentaho.di.engine.kettlenative.impl.factories.SparkExecOperationFactory;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.Publisher;
+import rx.Observable;
+import rx.RxReactiveStreams;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Engine implements IEngine {
 
@@ -40,10 +34,10 @@ public class Engine implements IEngine {
       .setAppName( "AEL" )
       .setMaster( "local[2]" ) );
 
-  private final List<IExecutableOperationFactory> factories = ImmutableList.of(
-    new SparkExecOperationFactory(), new KettleExecOperationFactory() );  // TODO: injectable, rankable
+  // Pulling out Spark factory for now
+  private final List<IExecutableOperationFactory> factories = ImmutableList.of( new KettleExecOperationFactory() );
 
-  @Override public Future<IExecutionResult> execute( ITransformation trans ) {
+  @Override public IExecutionResult execute( ITransformation trans ) {
     initKettle();
     // convert ops to executable ops
     List<IExecutableOperation> execOps = getExecutableOperations( trans,
@@ -51,7 +45,36 @@ public class Engine implements IEngine {
     // wire up the execution graph
     wireExecution( execOps );
     // submit for execution
-    return executorService.submit( () -> getResult( trans, execOps ) );
+    start( trans, execOps );
+
+    return new IExecutionResult() {
+      private final ImmutableList<String> topics = ImmutableList.copyOf(
+        execOps.stream().flatMap( exOp -> exOp.getTopics().stream() ).iterator()
+      );
+
+      @Override public Status getStatus() {
+        return null;
+      }
+
+      @Override public ITransformation getTransformation() {
+        return trans;
+      }
+
+      @Override public IEngine getEngine() {
+        return Engine.this;
+      }
+
+      @Override public List<String> getTopics() {
+        return topics;
+      }
+
+      @Override public Publisher<Event> getEvents() {
+        Observable<Event> allEvents = Observable.from( execOps )
+          .map( IExecutableOperation::getEvents )
+          .flatMap( RxReactiveStreams::toObservable );
+        return RxReactiveStreams.toPublisher( allEvents );
+      }
+    };
   }
 
   private List<IExecutableOperation> getExecutableOperations( ITransformation trans, IExecutionContext context ) {
@@ -87,65 +110,20 @@ public class Engine implements IEngine {
       .orElseThrow( () -> new RuntimeException( "no matching exec op" ) );
   }
 
-  private Stream<IExecutableOperation> sourceExecOpsStream( ITransformation trans,
-                                                            List<IExecutableOperation> execOps ) {
-    return trans.getSourceOperations().stream()
-      .map( op -> getExecOp( op, execOps ) );
-  }
-
-  public IExecutionResult getResult( ITransformation trans, List<IExecutableOperation> execOps )
-    throws InterruptedException, ExecutionException {
-    CountDownLatch countdown = new CountDownLatch( execOps.size() );
-    CountdownSubscriber subscriber =
-      new CountdownSubscriber( countdown );
-
-    // Subscribe to each operation so we can hook into completion
-    execOps.stream()
-      .forEach( op -> op.subscribe( subscriber ) );
-
+  private void start( ITransformation trans, List<IExecutableOperation> execOps ) {
     // invoke each source operation
-    sourceExecOpsStream( trans, execOps )
-      .forEach(
-        execOp -> execOp.onNext( KettleDataEvent.empty() ) );
-
-    // wait for all operations to complete
-    countdown.await();
-
-    //return results
-    return () -> ImmutableList.<IProgressReporting<IDataEvent>>builder()
-      .addAll( execOps )
-      .build();
+    trans.getSourceOperations().stream()
+      .map( op -> getExecOp( op, execOps ) )
+      .forEach( execOp -> execOp.onNext( KettleDataEvent.empty() ) );
   }
 
-  /** temp hack for testing.  context should be passed in to the engine **/
+  /**
+   * temp hack for testing.  context should be passed in to the engine
+   **/
   private IExecutionContext getExecContext() {
     return new ExecutionContext( Collections.emptyMap(),
       ImmutableMap.of( "sparkcontext", javaSparkContext,
         "executor", executorService ) );
-  }
-
-  private class CountdownSubscriber implements Serializable, Subscriber<IDataEvent> {
-
-    private final CountDownLatch countDownLatch;
-
-    CountdownSubscriber( CountDownLatch countDownLatch ) {
-      this.countDownLatch = countDownLatch;
-    }
-
-    @Override public void onSubscribe( Subscription subscription ) {
-
-    }
-
-    @Override public void onNext( IDataEvent iDataEvent ) {
-    }
-
-    @Override public void onError( Throwable throwable ) {
-
-    }
-
-    @Override public void onComplete() {
-      countDownLatch.countDown();
-    }
   }
 
   private void initKettle() {

@@ -1,19 +1,14 @@
 package org.pentaho.di.engine.api;
 
-import java.util.List;
+import org.pentaho.di.engine.api.reporting.IProgressReporting;
 
 /**
  * Created by nbaker on 6/22/16.
  */
-public interface IExecutionResult  {
+public interface IExecutionResult extends IProgressReporting {
+  Status getStatus();
 
-  default IProgressReporting.Status getStatus() {
-    // Man I wish we could make this final
+  ITransformation getTransformation();
 
-    return IProgressReporting.Status.FINISHED;
-  }
-
-  List<IProgressReporting<IDataEvent>> getDataEventReport();
-
-
+  IEngine getEngine();
 }

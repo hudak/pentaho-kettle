@@ -12,6 +12,6 @@ import java.util.concurrent.Future;
  */
 public interface IEngine extends Serializable {
 
-   Future<IExecutionResult> execute( ITransformation trans );
+   IExecutionResult execute( ITransformation trans );
 }
 
