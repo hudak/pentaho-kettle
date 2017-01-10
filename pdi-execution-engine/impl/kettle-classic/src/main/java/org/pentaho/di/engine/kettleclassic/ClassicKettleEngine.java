@@ -1,16 +1,14 @@
 package org.pentaho.di.engine.kettleclassic;
 
+import com.google.common.base.Preconditions;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.logging.DefaultLogLevel;
-import org.pentaho.di.core.logging.KettleLogStore;
 import org.pentaho.di.core.logging.LoggingObjectType;
 import org.pentaho.di.core.logging.SimpleLoggingObject;
 import org.pentaho.di.engine.api.IEngine;
 import org.pentaho.di.engine.api.IExecutionContext;
-import org.pentaho.di.engine.api.IExecutionResultFuture;
 import org.pentaho.di.engine.api.ITransformation;
-import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransExecutionConfiguration;
 import org.pentaho.di.trans.TransMeta;
@@ -25,17 +23,20 @@ import java.util.UUID;
 public class ClassicKettleEngine implements IEngine {
 
   @Override public IExecutionContext prepare( ITransformation trans ) {
-    return new ClassicKettleExecutionContext( trans );
+    return new ClassicKettleExecutionContext( this, trans );
   }
 
-  @Override public IExecutionResultFuture execute( IExecutionContext context ) {
+  private TransMeta getTransMeta( ClassicKettleExecutionContext context ) {
+    Preconditions.checkArgument( context.getTransformation() instanceof ClassicTransformation );
+    ClassicTransformation transformation = (ClassicTransformation) context.getTransformation();
+    return transformation.getTransMeta();
+  }
 
-    ClassicKettleExecutionContext cContext = (ClassicKettleExecutionContext) context;
-    ClassicTransformation transformation = (ClassicTransformation) cContext.getTransformation();
-    TransMeta transMeta = transformation.getTransMeta();
-    TransExecutionConfiguration executionConfiguration = cContext.getExecutionConfiguration();
+  Trans execute( ClassicKettleExecutionContext context ) {
+    TransMeta transMeta = getTransMeta( context );
+    TransExecutionConfiguration executionConfiguration = context.getExecutionConfiguration();
 
-    Trans trans = null;
+    Trans trans;
     try {
       // Set the requested logging level..
       //
@@ -56,11 +57,12 @@ public class ClassicKettleEngine implements IEngine {
       // memory
       // To be able to completely test this, we need to run it as we would normally do in pan
       //
-      trans = new Trans( transMeta, cContext.getRepository(), transMeta.getName(), transMeta.getRepositoryDirectory().getPath(),
+      trans = new Trans( transMeta, context.getRepository(), transMeta.getName(),
+        transMeta.getRepositoryDirectory().getPath(),
         transMeta.getFilename() );
 
-      trans.setRepository( cContext.getRepository() );
-      trans.setMetaStore( cContext.getMetaStore() );
+      trans.setRepository( context.getRepository() );
+      trans.setMetaStore( context.getMetaStore() );
 
       String spoonLogObjectId = UUID.randomUUID().toString();
       SimpleLoggingObject spoonLoggingObject = new SimpleLoggingObject( "SPOON", LoggingObjectType.SPOON, null );
@@ -72,37 +74,21 @@ public class ClassicKettleEngine implements IEngine {
       trans.setReplayDate( executionConfiguration.getReplayDate() );
       trans.setRepository( executionConfiguration.getRepository() );
       trans.setMonitored( true );
-    } catch ( KettleException e ) {
-
-    }
-    if ( trans != null ) {
-
-//      log.logMinimal( BaseMessages.getString( PKG, "TransLog.Log.LaunchingTransformation" )
-//        + trans.getTransMeta().getName() + "]..." );
-
       trans.setSafeModeEnabled( executionConfiguration.isSafeModeEnabled() );
       trans.setGatheringMetrics( executionConfiguration.isGatheringMetrics() );
 
       // Launch the step preparation in a different thread.
       // That way Spoon doesn't block anymore and that way we can follow the progress of the initialization
       //
-      final Thread parentThread = Thread.currentThread();
 
+      trans.prepareExecution( context.getArguments() );
+      trans.startThreads();
 
-      try {
-        trans.prepareExecution( context.getArguments() );
-        transformation.setTrans( trans );
-        trans.startThreads();
-      } catch ( KettleException e ) {
-        e.printStackTrace();
-      }
-
-//      log.logMinimal( BaseMessages.getString( PKG, "TransLog.Log.StartedExecutionOfTransformation" ) );
-
+      //      log.logMinimal( BaseMessages.getString( PKG, "TransLog.Log.StartedExecutionOfTransformation" ) );
+    } catch ( KettleException e ) {
+      throw new RuntimeException( e );
     }
 
-
-
-    return new ClassicExecutionResultsFuture( trans );
+    return trans;
   }
 }

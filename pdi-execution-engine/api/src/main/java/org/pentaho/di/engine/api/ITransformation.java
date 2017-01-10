@@ -1,8 +1,10 @@
 package org.pentaho.di.engine.api;
 
+import org.pentaho.di.engine.api.reporting.IProgressReporting;
+
 import java.util.List;
 
-public interface ITransformation {
+public interface ITransformation extends IProgressReporting {
   List<IOperation> getOperations();
 
   /**

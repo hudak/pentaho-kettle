@@ -3,6 +3,7 @@ package org.pentaho.di.engine.kettleclassic;
 import org.junit.Test;
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.engine.api.IExecutionContext;
+import org.pentaho.di.engine.api.IExecutionResult;
 import org.pentaho.di.engine.api.ITransformation;
 import org.pentaho.di.trans.TransExecutionConfiguration;
 import org.pentaho.di.trans.TransMeta;
@@ -18,11 +19,9 @@ public class ClassicKettleEngineTest {
 
     KettleEnvironment.init();
     ClassicKettleEngine engine = new ClassicKettleEngine();
-    TransMeta meta = new TransMeta( "src/test/resources/test.ktr" );
+    TransMeta meta = new TransMeta( "../kettle-native/src/test/resources/lorem.ktr" );
     ITransformation transformation = ClassicUtils.convert( meta );
-    ClassicKettleExecutionContext context = (ClassicKettleExecutionContext) engine.prepare( transformation );
-    context.setExecutionConfiguration( new TransExecutionConfiguration(  ) );
-    engine.execute( context );
+    IExecutionResult result = engine.prepare( transformation ).execute().get();
   }
 
 }

@@ -13,7 +13,6 @@ import java.util.List;
  */
 public class ClassicTransformation implements ITransformation {
   private List<ClassicOperation> operations;
-  private Trans trans;
   private TransMeta transMeta;
 
   public ClassicTransformation( TransMeta transMeta ) {
@@ -48,14 +47,6 @@ public class ClassicTransformation implements ITransformation {
   public <R> void setOperations( List<ClassicOperation> operations ) {
     this.operations = operations;
     this.operations.forEach( o -> o.setTransformation( ClassicTransformation.this ) );
-  }
-
-  public void setTrans( Trans trans ) {
-    this.trans = trans;
-  }
-
-  public Trans getTrans() {
-    return trans;
   }
 
   public TransMeta getTransMeta() {

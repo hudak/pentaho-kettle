@@ -18,6 +18,7 @@ import org.pentaho.di.engine.api.IExecutableOperation;
 import org.pentaho.di.engine.api.IHop;
 import org.pentaho.di.engine.api.IOperation;
 import org.pentaho.di.engine.api.IOperationVisitor;
+import org.pentaho.di.engine.api.IPDIEventSource;
 import org.pentaho.di.engine.api.ITransformation;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
@@ -108,6 +109,26 @@ public class KettleExecOperation implements IExecutableOperation {
 
   @Override public <T> T accept( IOperationVisitor<T> visitor ) {
     return operation.accept( visitor );
+  }
+
+  @Override public void accept( IPDIEventSource<IDataEvent> iDataEventIPDIEventSource ) {
+    iDataEventIPDIEventSource.subscribe( new Subscriber<IDataEvent>() {
+      @Override public void onSubscribe( Subscription s ) {
+
+      }
+
+      @Override public void onNext( IDataEvent iDataEvent ) {
+
+      }
+
+      @Override public void onError( Throwable t ) {
+
+      }
+
+      @Override public void onComplete() {
+
+      }
+    } );
   }
 
   @Override public void onComplete() {

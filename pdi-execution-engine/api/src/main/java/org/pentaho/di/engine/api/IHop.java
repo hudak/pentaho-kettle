@@ -1,11 +1,11 @@
 package org.pentaho.di.engine.api;
 
-import java.io.Serializable;
+import org.pentaho.di.engine.api.reporting.IProgressReporting;
 
 /**
  * @author nhudak
  */
-public interface IHop extends Serializable {
+public interface IHop extends IProgressReporting {
 
   String TYPE_NORMAL = "NORMAL";
 

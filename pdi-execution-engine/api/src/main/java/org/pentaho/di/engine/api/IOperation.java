@@ -1,5 +1,8 @@
 package org.pentaho.di.engine.api;
 
+import org.pentaho.di.engine.api.reporting.IProgressReporting;
+import org.reactivestreams.Publisher;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -11,7 +14,7 @@ import java.util.List;
  * which is associated with the behavior specific to
  * an IEngine.
  */
-public interface IOperation extends Serializable {
+public interface IOperation extends IProgressReporting {
 
   String getId();
 

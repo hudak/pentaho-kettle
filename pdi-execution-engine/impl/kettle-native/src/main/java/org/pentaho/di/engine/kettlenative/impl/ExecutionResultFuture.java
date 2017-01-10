@@ -2,12 +2,8 @@ package org.pentaho.di.engine.kettlenative.impl;
 
 import org.pentaho.di.engine.api.IExecutionContext;
 import org.pentaho.di.engine.api.IExecutionResult;
-import org.pentaho.di.engine.api.IExecutionResultFuture;
-import org.pentaho.di.engine.api.IProgressReporting;
 import org.pentaho.di.engine.api.ITransformation;
-import org.pentaho.di.engine.api.ITransformationEvent;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
