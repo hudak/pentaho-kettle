@@ -54,7 +54,7 @@ public class KettleDataEvent implements IDataEvent, Serializable {
   }
 
   @Override public IPDIEventSource getEventSource() {
-    return operation;
+    return (IPDIEventSource) operation;
   }
 
   public RowMetaInterface getRowMeta() {

@@ -21,17 +21,15 @@ public class SparkExecOperationFactory implements IExecutableOperationFactory {
 
   private static List<String> supportedSteps = ImmutableList.of( "Calculator" );
 
-  @Override public Optional<IExecutableOperation> create(
-    ITransformation transformation, IOperation operation, IExecutionContext context ) {
+  @Override public Optional<IExecutableOperation> create( IOperation operation, IExecutionContext context ) {
+    ITransformation transformation = context.getTransformation();
     TransMeta transMeta = getTransMeta( transformation );
     if ( !supportedSteps.contains( transMeta.findStep( operation.getId() ).getTypeId() ) ) {
       return Optional.empty();
     }
-    JavaSparkContext sparkContext = Optional.ofNullable((JavaSparkContext) context.getEnvironment().get( "sparkcontext" ))
-      .orElseThrow( () -> new RuntimeException( "no executor" ));
+    JavaSparkContext sparkContext =
+      Optional.ofNullable( (JavaSparkContext) context.getEnvironment().get( "sparkcontext" ) )
+        .orElseThrow( () -> new RuntimeException( "no executor" ) );
     return Optional.of( new SparkExecOperation( operation, transformation, sparkContext ) );
   }
-
-
-
 }

@@ -4,22 +4,21 @@ import com.google.common.base.Preconditions;
 import org.pentaho.di.core.QueueRowSet;
 import org.pentaho.di.core.RowSet;
 import org.pentaho.di.core.exception.KettleException;
-import org.pentaho.di.core.exception.KettleMissingPluginsException;
 import org.pentaho.di.core.exception.KettleStepException;
-import org.pentaho.di.core.exception.KettleXMLException;
-import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.row.RowMeta;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.value.ValueMetaString;
-import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.engine.api.IData;
 import org.pentaho.di.engine.api.IDataEvent;
 import org.pentaho.di.engine.api.IExecutableOperation;
 import org.pentaho.di.engine.api.IHop;
 import org.pentaho.di.engine.api.IOperation;
 import org.pentaho.di.engine.api.IOperationVisitor;
+import org.pentaho.di.engine.api.IPDIEventSink;
 import org.pentaho.di.engine.api.IPDIEventSource;
 import org.pentaho.di.engine.api.ITransformation;
+import org.pentaho.di.engine.api.reporting.Metrics;
+import org.pentaho.di.engine.api.reporting.Status;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.trans.step.BaseStep;
@@ -31,10 +30,7 @@ import org.pentaho.di.trans.step.StepMeta;
 import org.pentaho.di.trans.step.StepMetaDataCombi;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +42,8 @@ import java.util.stream.Stream;
 import static org.pentaho.di.engine.kettlenative.impl.KettleNativeUtil.createTrans;
 import static org.pentaho.di.engine.kettlenative.impl.KettleNativeUtil.getTransMeta;
 
-public class KettleExecOperation implements IExecutableOperation {
+public class KettleExecOperation
+  implements IExecutableOperation, IPDIEventSource<IDataEvent>, IPDIEventSink<IDataEvent>, Subscriber<IDataEvent> {
 
   private final IOperation operation;
   private transient final Trans trans;
@@ -70,12 +67,22 @@ public class KettleExecOperation implements IExecutableOperation {
   }
 
   public static IExecutableOperation compile( IOperation operation, ITransformation trans,
-                                             ExecutorService executorService ) {
+                                              ExecutorService executorService ) {
     return new KettleExecOperation( operation, trans, executorService );
   }
 
   @Override public void subscribe( Subscriber<? super IDataEvent> subscriber ) {
     subscribers.add( subscriber );
+  }
+
+  @Override public void start() {
+    if ( !started.getAndSet( true ) ) {
+      StepMetaDataCombi combi = new StepMetaDataCombi();
+      combi.step = step;
+      combi.meta = stepMeta.getStepMetaInterface();
+      combi.data = data;
+      executor.submit( new RunThread( combi ) );
+    }
   }
 
   @Override public boolean isRunning() {
@@ -111,26 +118,6 @@ public class KettleExecOperation implements IExecutableOperation {
     return operation.accept( visitor );
   }
 
-  @Override public void accept( IPDIEventSource<IDataEvent> iDataEventIPDIEventSource ) {
-    iDataEventIPDIEventSource.subscribe( new Subscriber<IDataEvent>() {
-      @Override public void onSubscribe( Subscription s ) {
-
-      }
-
-      @Override public void onNext( IDataEvent iDataEvent ) {
-
-      }
-
-      @Override public void onError( Throwable t ) {
-
-      }
-
-      @Override public void onComplete() {
-
-      }
-    } );
-  }
-
   @Override public void onComplete() {
 
   }
@@ -145,9 +132,7 @@ public class KettleExecOperation implements IExecutableOperation {
 
   @Override public void onNext( IDataEvent dataEvent ) {
     Preconditions.checkNotNull( dataEvent );
-    if ( !started.getAndSet( true ) ) {
-      startStep();
-    }
+    start();
     try {
       switch( dataEvent.getState() ) {
         case ACTIVE:
@@ -155,7 +140,7 @@ public class KettleExecOperation implements IExecutableOperation {
           getInputRowset( dataEvent ).ifPresent(
             rowset -> {
               List<IData> data = dataEvent.getData();
-              if (data.size() > 1) {
+              if ( data.size() > 1 ) {
                 // TEMP hack, this only happens with Spark right now
                 data.stream()
                   .forEach( d -> rowset.putRow( rowMetaInterface, d.getData() ) );
@@ -174,13 +159,13 @@ public class KettleExecOperation implements IExecutableOperation {
           terminalRow( dataEvent );
           break;
       }
-    } catch ( KettleException   e ) {
+    } catch ( KettleException e ) {
       throw new RuntimeException( e );
     }
 
   }
 
-  private void terminalRow( IDataEvent dataEvent )  {
+  private void terminalRow( IDataEvent dataEvent ) {
     try {
       getInputRowset( dataEvent ).ifPresent( rowset -> rowset.setDone() );
     } catch ( KettleStepException e ) {
@@ -192,21 +177,13 @@ public class KettleExecOperation implements IExecutableOperation {
     RowMetaInterface rowMetaInterface = new RowMeta();
     rowMetaInterface.addValueMeta( new ValueMetaString( "name" ) );
     if ( dataEvent instanceof KettleDataEvent ) {
-      rowMetaInterface = ((KettleDataEvent) dataEvent ).getRowMeta();
+      rowMetaInterface = ( (KettleDataEvent) dataEvent ).getRowMeta();
     }
     return rowMetaInterface;
   }
 
   private Optional<RowSet> getInputRowset( IDataEvent dataEvent ) throws KettleStepException {
     return Optional.ofNullable( ( (BaseStep) step ).findInputRowSet( dataEvent.getEventSource().getId() ) );
-  }
-
-  private void startStep() {
-    StepMetaDataCombi combi = new StepMetaDataCombi();
-    combi.step = step;
-    combi.meta = stepMeta.getStepMetaInterface();
-    combi.data = data;
-    executor.submit( new RunThread( combi ) );
   }
 
   private void initializeStepMeta() {
@@ -286,26 +263,32 @@ public class KettleExecOperation implements IExecutableOperation {
     return out;
   }
 
-
-
-  @Override public long getIn() {
+  public long getIn() {
     return step.getLinesRead();
   }
 
-  @Override public long getOut() {
+  public long getOut() {
     return step.getLinesOutput() + step.getLinesWritten();
   }
 
-  @Override public long getDropped() {
+  public long getDropped() {
     return step.getLinesRejected();
   }
 
-  @Override public int getInFlight() {
+  public int getInFlight() {
     return 0; // ?
   }
 
-  @Override public Status getStatus() {
-    return null;
+  public IOperation getParent() {
+    return operation;
+  }
+
+  Metrics getMetrics() {
+    return new Metrics( this, getIn(), getOut(), getDropped(), getInFlight() );
+  }
+
+  public Status getStatus() {
+    return isRunning() ? Status.RUNNING : Status.FINISHED;
   }
 
   @Override public String toString() {
@@ -314,5 +297,9 @@ public class KettleExecOperation implements IExecutableOperation {
     theString.append( " IN:   " + getIn() + "\n" );
     theString.append( " OUT:  " + getOut() + "\n" );
     return theString.toString();
+  }
+
+  @Override public void accept( IPDIEventSource<IDataEvent> source ) {
+    source.subscribe( this );
   }
 }

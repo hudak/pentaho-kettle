@@ -11,7 +11,7 @@ package org.pentaho.di.engine.api;
  * tuples received "From" parent operations and published
  * "To" child ops.
  */
-public interface IExecutableOperation extends IOperation, IPDIEventSource<IDataEvent>, IPDIEventSink<IDataEvent> {
+public interface IExecutableOperation extends IOperation {
   void start();
 
   boolean isRunning();

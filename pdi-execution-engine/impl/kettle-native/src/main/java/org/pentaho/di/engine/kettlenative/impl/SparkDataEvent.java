@@ -64,6 +64,6 @@ public class SparkDataEvent implements IDataEvent {
   }
 
   @Override public IPDIEventSource getEventSource() {
-    return operation;
+    return (IPDIEventSource) operation;
   }
 }

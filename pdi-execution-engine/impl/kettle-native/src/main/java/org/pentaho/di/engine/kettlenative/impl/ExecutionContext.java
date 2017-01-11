@@ -1,17 +1,18 @@
 package org.pentaho.di.engine.kettlenative.impl;
 
 import org.pentaho.di.engine.api.IExecutionContext;
+import org.pentaho.di.engine.api.IExecutionResult;
 import org.pentaho.di.engine.api.ITransformation;
-import org.pentaho.di.repository.Repository;
 import org.pentaho.di.trans.TransExecutionConfiguration;
 import org.pentaho.di.trans.TransMeta;
-import org.pentaho.metastore.api.IMetaStore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class ExecutionContext implements IExecutionContext {
 
+  private final Engine engine;
   private Map<String, Object> parameters = new HashMap<String, Object>();
   private Map<String, Object> environment = new HashMap<String, Object>();
   private ITransformation transformation;
@@ -19,12 +20,9 @@ public class ExecutionContext implements IExecutionContext {
   private TransExecutionConfiguration executionConfiguration;
   private String[] arguments;
 
-  public ExecutionContext( ITransformation trans ) {
-    this.transformation = trans;
-  }
-
-  public ExecutionContext( ITransformation transformation, Map<String, Object> parameters,
+  public ExecutionContext( Engine engine, ITransformation transformation, Map<String, Object> parameters,
                            Map<String, Object> environment ) {
+    this.engine = engine;
     this.parameters = parameters;
     this.environment = environment;
     this.transformation = transformation;
@@ -72,6 +70,10 @@ public class ExecutionContext implements IExecutionContext {
 
   @Override public String[] getArguments() {
     return new String[ 0 ];
+  }
+
+  @Override public CompletableFuture<IExecutionResult> execute() {
+    return engine.execute( this );
   }
 
   public void setArguments( String[] arguments ) {

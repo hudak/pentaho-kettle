@@ -1,5 +1,6 @@
 package org.pentaho.di.engine.kettlenative.impl;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.spark.SparkConf;
@@ -22,10 +23,12 @@ import org.reactivestreams.Subscription;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,12 +45,13 @@ public class Engine implements IEngine {
     new SparkExecOperationFactory(), new KettleExecOperationFactory() );  // TODO: injectable, rankable
 
   @Override public IExecutionContext prepare( ITransformation trans ) {
-    return new ExecutionContext( trans,Collections.emptyMap(),
-      ImmutableMap.of( "sparkcontext", javaSparkContext,
-        "executor", executorService )  );
+    return new ExecutionContext( this, trans, Collections.emptyMap(), ImmutableMap.of(
+      "sparkcontext", javaSparkContext,
+      "executor", executorService
+    ) );
   }
 
-  @Override public IExecutionResultFuture execute( IExecutionContext context ) {
+  CompletableFuture<IExecutionResult> execute( ExecutionContext context ) {
     ITransformation trans = context.getTransformation();
     initKettle();
     // convert ops to executable ops
@@ -56,7 +60,7 @@ public class Engine implements IEngine {
     // wire up the execution graph
     wireExecution( execOps );
     // submit for execution
-    return new ExecutionResultFuture( context, executorService.submit( () -> getResult( trans, execOps ) ) );
+    return CompletableFuture.supplyAsync( () -> getResult( trans, execOps ), executorService );
   }
 
   private List<IExecutableOperation> getExecutableOperations( ITransformation trans, IExecutionContext context ) {
@@ -68,21 +72,29 @@ public class Engine implements IEngine {
 
   private IExecutableOperation getExecOp( ITransformation trans, IOperation op, IExecutionContext context ) {
     return factories.stream()
-      .map( factory -> factory.create( trans, op, context ) )
-      .filter( o -> o.isPresent() )
+      .map( factory -> factory.create( op, context ) )
+      .flatMap( option -> option.map( Stream::of ).orElseGet( Stream::empty ) )
       .findFirst()
-      .get()
       .orElseThrow( () -> new RuntimeException( "Couldn't create an executable op for " + op.getId() ) );
   }
 
   private void wireExecution( List<IExecutableOperation> execOps ) {
     // for each operation, subscribe to the set of "from" ops.
-    execOps.stream()
-      .forEach( op ->
-        op.getFrom().stream()
-          .map( fromOp -> getExecOp( fromOp, execOps ) )
-          .forEach( fromExecOp -> fromExecOp.subscribe( op ) )
-      );
+    Function<IOperation, KettleExecOperation> unsafeLookup = unsafeLookup( execOps );
+    execOps.stream().map( unsafeLookup ).forEach( to ->
+      to.getFrom().stream().map( unsafeLookup ).forEach( to::accept )
+    );
+  }
+
+  private Function<IOperation, KettleExecOperation> unsafeLookup( final List<IExecutableOperation> execOps ) {
+    return new Function<IOperation, KettleExecOperation>() {
+      private Map<String, KettleExecOperation> lookup =
+        execOps.stream().collect( Collectors.toMap( IOperation::getId, KettleExecOperation.class::cast ) );
+
+      @Override public KettleExecOperation apply( IOperation iOperation ) {
+        return lookup.get( iOperation.getId() );
+      }
+    };
   }
 
   private IExecutableOperation getExecOp( IOperation op, List<IExecutableOperation> execOps ) {
@@ -98,28 +110,28 @@ public class Engine implements IEngine {
       .map( op -> getExecOp( op, execOps ) );
   }
 
-  public IExecutionResult getResult( ITransformation trans, List<IExecutableOperation> execOps )
-    throws InterruptedException, ExecutionException {
+  public IExecutionResult getResult( ITransformation trans, List<IExecutableOperation> execOps ) {
     CountDownLatch countdown = new CountDownLatch( execOps.size() );
     CountdownSubscriber subscriber =
       new CountdownSubscriber( countdown );
 
     // Subscribe to each operation so we can hook into completion
-    execOps.stream()
-      .forEach( op -> op.subscribe( subscriber ) );
+    execOps.stream().map( unsafeLookup( execOps ) ).forEach( op -> op.subscribe( subscriber ) );
 
     // invoke each source operation
-    sourceExecOpsStream( trans, execOps )
-      .forEach(
-        execOp -> execOp.onNext( KettleDataEvent.empty() ) );
+    sourceExecOpsStream( trans, execOps ).forEach( IExecutableOperation::start );
 
     // wait for all operations to complete
-    countdown.await();
+    try {
+      countdown.await();
+    } catch ( Exception e ) {
+      throw Throwables.propagate( e );
+    }
 
     //return results
-    return () -> ImmutableList.<IProgressReporting<IDataEvent>>builder()
-      .addAll( execOps )
-      .build();
+    return () -> execOps.stream()
+      .map( KettleExecOperation.class::cast )
+      .collect( Collectors.toMap( KettleExecOperation::getParent, KettleExecOperation::getMetrics ) );
   }
 
 
