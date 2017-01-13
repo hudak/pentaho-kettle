@@ -28,8 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,10 +39,10 @@ public class ClassicKettleExecutionContext implements IExecutionContext {
   private final ClassicKettleEngine engine;
   private final ITransformation transformation;
   private final ReportingManager reportingManager = new ReportingManager();
-  private ExecutorService executorService = Executors.newCachedThreadPool();
   private TransExecutionConfiguration executionConfiguration = new TransExecutionConfiguration();
   private IMetaStore metaStore;
   private Repository repository;
+  private Scheduler scheduler = Schedulers.io();
 
   public ClassicKettleExecutionContext( ClassicKettleEngine engine, ITransformation transformation ) {
     this.engine = engine;
@@ -71,12 +69,28 @@ public class ClassicKettleExecutionContext implements IExecutionContext {
     return executionConfiguration;
   }
 
+  public IMetaStore getMetaStore() {
+    return metaStore;
+  }
+
   public void setMetaStore( IMetaStore metaStore ) {
     this.metaStore = metaStore;
   }
 
+  public Repository getRepository() {
+    return repository;
+  }
+
   public void setRepository( Repository repository ) {
     this.repository = repository;
+  }
+
+  public Scheduler getScheduler() {
+    return scheduler;
+  }
+
+  public void setScheduler( Scheduler scheduler ) {
+    this.scheduler = scheduler;
   }
 
   @Override public String[] getArguments() {
@@ -88,18 +102,18 @@ public class ClassicKettleExecutionContext implements IExecutionContext {
     CompletableFuture<Map<IOperation, Metrics>> report = getMetricsReport();
 
     // Prepare trans for execution
-    CompletableFuture.supplyAsync( () -> engine.prepare( this ), executorService )
+    Observable.fromCallable( () -> engine.prepare( this ) )
       // Bind reporting sources
-      .thenApply( this::bindReporting )
+      .doOnNext( this::bindReporting )
       // Execute trans
-      .thenAcceptAsync( engine::execute, executorService )
-      // Signal complete to listeners
-      .whenComplete( ( done, exception ) -> {
-        if ( exception != null ) {
-          report.completeExceptionally( exception );
-        }
-        reportingManager.completeAll();
-      } );
+      .doOnNext( engine::execute )
+      // If something failed, report the exception
+      .doOnError( report::completeExceptionally )
+      // Stop reporting
+      .doAfterTerminate( reportingManager::completeAll )
+      // ^ Run all of the above on a blocking thread ^
+      .subscribeOn( scheduler )
+      .subscribe();
 
     return report.thenApply( events -> (IExecutionResult) () -> events );
   }
@@ -118,9 +132,7 @@ public class ClassicKettleExecutionContext implements IExecutionContext {
     return report;
   }
 
-  private Trans bindReporting( Trans trans ) {
-    Scheduler scheduler = Schedulers.from( executorService );
-
+  private void bindReporting( Trans trans ) {
     // Publish transformation status
     Observable<Status> transStatus = Observable.create( TransMonitor.onSubscribe( trans ) );
     reportingManager.registerEventSource( transformation, Status.class, transStatus );
@@ -137,27 +149,10 @@ public class ClassicKettleExecutionContext implements IExecutionContext {
 
       reportingManager.registerEventSource( op, Metrics.class, metrics );
     }
-    return trans;
   }
 
   private Metrics getMetrics( StepInterface step ) {
     return new Metrics( step.getLinesInput(), step.getLinesOutput(), step.getLinesRejected(), 0 );
-  }
-
-  public IMetaStore getMetaStore() {
-    return metaStore;
-  }
-
-  public Repository getRepository() {
-    return repository;
-  }
-
-  public ExecutorService getExecutorService() {
-    return executorService;
-  }
-
-  public void setExecutorService( ExecutorService executorService ) {
-    this.executorService = executorService;
   }
 
   @Override public Collection<IReportingEventSource> getReportingSources() {

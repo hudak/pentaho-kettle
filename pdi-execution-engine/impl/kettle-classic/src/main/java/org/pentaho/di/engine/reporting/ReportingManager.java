@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentMap;
  * Created by hudak on 1/11/17.
  */
 public class ReportingManager {
-  ConcurrentMap<Topic, Subject<Serializable, Serializable>> subjects = Maps.newConcurrentMap();
+  private ConcurrentMap<Topic, Subject<Serializable, Serializable>> subjects = Maps.newConcurrentMap();
 
   public <S extends IReportingEventSource, D extends Serializable>
   Observable<IReportingEvent<S, D>> getObservable( S source, Class<D> type ) {
