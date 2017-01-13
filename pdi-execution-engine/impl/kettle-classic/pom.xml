@@ -38,6 +38,19 @@
       <version>${project.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.reactivex</groupId>
+      <artifactId>rxjava</artifactId>
+      <version>${rxjava.dependency.version}</version>
+    </dependency>
+    <dependency>
+      <!-- https://mvnrepository.com/artifact/io.reactivex/rxjava-reactive-streams -->
+      <groupId>io.reactivex</groupId>
+      <artifactId>rxjava-reactive-streams</artifactId>
+      <version>1.2.1</version>
+    </dependency>
+
+
     <!-- Trans depends on servlet -->
     <dependency>
       <groupId>org.hamcrest</groupId>
@@ -48,7 +61,6 @@
 
 
   </dependencies>
-
 
 
   <build>

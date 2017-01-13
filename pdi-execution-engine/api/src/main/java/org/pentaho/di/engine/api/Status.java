@@ -1,9 +1,11 @@
-package org.pentaho.di.engine.api.reporting;
+package org.pentaho.di.engine.api;
+
+import java.io.Serializable;
 
 /**
  * Created by hudak on 1/6/17.
  */
-public enum Status {
+public enum Status implements Serializable {
   STOPPED( false ),
   RUNNING( false ),
   PAUSED( false ),

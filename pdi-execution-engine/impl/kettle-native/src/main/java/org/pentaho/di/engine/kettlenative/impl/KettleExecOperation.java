@@ -18,7 +18,7 @@ import org.pentaho.di.engine.api.IPDIEventSink;
 import org.pentaho.di.engine.api.IPDIEventSource;
 import org.pentaho.di.engine.api.ITransformation;
 import org.pentaho.di.engine.api.reporting.Metrics;
-import org.pentaho.di.engine.api.reporting.Status;
+import org.pentaho.di.engine.api.Status;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.trans.step.BaseStep;

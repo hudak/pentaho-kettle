@@ -16,6 +16,7 @@ import org.pentaho.di.trans.TransMeta;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by nbaker on 1/4/17.
@@ -32,7 +33,7 @@ public class ClassicKettleEngine implements IEngine {
     return transformation.getTransMeta();
   }
 
-  Trans execute( ClassicKettleExecutionContext context ) {
+  Trans prepare( ClassicKettleExecutionContext context ) {
     TransMeta transMeta = getTransMeta( context );
     TransExecutionConfiguration executionConfiguration = context.getExecutionConfiguration();
 
@@ -82,13 +83,20 @@ public class ClassicKettleEngine implements IEngine {
       //
 
       trans.prepareExecution( context.getArguments() );
-      trans.startThreads();
-
       //      log.logMinimal( BaseMessages.getString( PKG, "TransLog.Log.StartedExecutionOfTransformation" ) );
     } catch ( KettleException e ) {
       throw new RuntimeException( e );
     }
 
     return trans;
+  }
+
+  void execute( Trans trans ) {
+    try {
+      trans.startThreads();
+      trans.waitUntilFinished();
+    } catch ( KettleException e ) {
+      throw new RuntimeException( e );
+    }
   }
 }
