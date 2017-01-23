@@ -1,8 +1,6 @@
 package org.pentaho.di.engine.api;
 
 
-import java.io.Serializable;
-
 /**
  * An IEngine is responsible for executing an ITransformation.
  * <p>
@@ -10,6 +8,6 @@ import java.io.Serializable;
  * trans, rewrite or modify if necessary (leveraging IOperationVisitors),
  * and "resolve" the trans IOperations to concrete functions (ICallableOperations).
  */
-public interface IEngine extends Serializable {
+public interface IEngine {
   IExecutionContext prepare( ITransformation trans );
 }
