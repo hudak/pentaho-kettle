@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>org.pentaho</groupId>
+    <artifactId>pdi-execution-remote-feature-parent</artifactId>
+    <version>7.1-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>pdi-execution-engine-remote-features</artifactId>
+  <packaging>feature</packaging>
+
+  <name>pdi-execution-engine-remote-features</name>
+  <description>pdi-execution-engine-remote-features details</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>pdi-execution-remote-engine-feature-client</artifactId>
+      <version>${project.version}</version>
+      <type>xml</type>
+      <classifier>features</classifier>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>pdi-execution-remote-engine-feature-server</artifactId>
+      <version>${project.version}</version>
+      <type>xml</type>
+      <classifier>features</classifier>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.karaf.tooling</groupId>
+        <artifactId>karaf-maven-plugin</artifactId>
+
+        <configuration>
+          <!--<startLevel>80</startLevel>-->
+          <!--<aggregateFeatures>true</aggregateFeatures>-->
+          <!--<resolver>(obr)</resolver>-->
+          <!--<checkDependencyChange>true</checkDependencyChange>-->
+          <!--<failOnDependencyChange>false</failOnDependencyChange>-->
+          <!--<logDependencyChanges>true</logDependencyChanges>-->
+          <!--<overwriteChangedDependencies>true</overwriteChangedDependencies>-->
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

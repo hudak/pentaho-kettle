@@ -18,7 +18,7 @@
 
   <modules>
     <module>impl</module>
-    <module>feature</module>
+    <module>features</module>
     <module>assembly</module>
   </modules>
 
