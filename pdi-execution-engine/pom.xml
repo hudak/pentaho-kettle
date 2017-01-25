@@ -24,6 +24,7 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>reactive-utils</module>
     <module>api</module>
     <module>impl</module>
   </modules>

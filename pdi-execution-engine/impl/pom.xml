@@ -16,7 +16,6 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>reactive-utils</module>
     <module>model</module>
     <module>kettle-classic</module>
     <module>kettle-native</module>
