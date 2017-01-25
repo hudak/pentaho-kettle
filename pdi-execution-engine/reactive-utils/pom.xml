@@ -51,7 +51,7 @@
         <configuration>
           <instructions>
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-            <Embed-Dependency>*;groupId=io.reactivex;scope=runtime;inline=true</Embed-Dependency>
+            <Embed-Dependency>*;inline=true</Embed-Dependency>
             <Export-Package>rx.*</Export-Package>
             <Import-Package>org.reactivestreams.*</Import-Package>
           </instructions>

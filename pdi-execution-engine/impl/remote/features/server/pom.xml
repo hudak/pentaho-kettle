@@ -29,6 +29,7 @@
         <extensions>true</extensions>
         <configuration>
           <startLevel>80</startLevel>
+          <aggregateFeatures>true</aggregateFeatures>
         </configuration>
       </plugin>
     </plugins>

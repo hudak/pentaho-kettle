@@ -14,9 +14,11 @@
 
   <properties>
     <karaf-maven-plugin.version>4.0.7</karaf-maven-plugin.version>
+    <aries.rsa.version>1.9.0</aries.rsa.version>
   </properties>
 
   <modules>
+    <module>client</module>
     <module>impl</module>
     <module>features</module>
     <module>assembly</module>

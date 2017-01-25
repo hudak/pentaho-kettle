@@ -43,13 +43,22 @@
     </dependency>
     <dependency>
       <groupId>org.pentaho</groupId>
-      <artifactId>pdi-execution-remote-engine-server</artifactId>
+      <artifactId>pdi-execution-remote-engine-feature-server</artifactId>
       <version>${project.version}</version>
       <type>xml</type>
       <classifier>features</classifier>
       <scope>runtime</scope>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/org.apache.aries.rsa/repository -->
+    <dependency>
+      <groupId>org.apache.aries.rsa</groupId>
+      <artifactId>rsa-features</artifactId>
+      <classifier>features</classifier>
+      <version>${aries.rsa.version}</version>
+      <type>xml</type>
+      <scope>runtime</scope>
+    </dependency>
     <!--<dependency>-->
       <!--<groupId>pentaho.karaf.examples</groupId>-->
       <!--<artifactId>stock-feature</artifactId>-->
@@ -143,26 +152,17 @@
           </startupFeatures>
           <bootFeatures>
             <!-- Boot Features are intalled by the feature system, Entries are put in etc/org.apache.karaf.features.cfg -->
-            <feature>aries-blueprint</feature>
+            <feature>standard</feature>
 
             <!-- features below this are there to support debugging -->
-            <feature>shell</feature>
-            <feature>ssh</feature>
-            <feature>instance</feature>
-            <feature>config</feature>
             <feature>diagnostic</feature>
-            <feature>log</feature>
-            <feature>service</feature>
-            <feature>bundle</feature>
-            <feature>system</feature>
-            <feature>feature</feature>
           </bootFeatures>
           <installedFeatures>
             <!-- Features listed here have their artifacts placed in the /system directory and can be installed at runtime.
                  If you move stock-feature here it's artifacts will be available in the assembly and it can be installed from the
                  shell with "feature:install stock-feature"
              -->
-            <feature>pdi-execution-remote-engine-server</feature>
+            <feature>pdi-execution-remote-engine-feature-server</feature>
           </installedFeatures>
         </configuration>
       </plugin>
