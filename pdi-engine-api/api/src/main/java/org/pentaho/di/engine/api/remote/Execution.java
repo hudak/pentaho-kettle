@@ -1,7 +1,5 @@
 package org.pentaho.di.engine.api.remote;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
 
 /**
@@ -32,16 +30,4 @@ public interface Execution<T extends Serializable> {
    * @param event Serialized event data
    */
   void update( T event );
-
-  /**
-   * Open a stream for nosy clients to get live feedback.
-   * <p>
-   * Create a serialized stream of events sent to this execution via {@link #update(T)}
-   * If using the pentaho-object-tunnel, wrap with a TunnelInput
-   * <p>
-   * Behavior may be non-deterministic if more than one stream is opened
-   *
-   * @return Serialized stream of events
-   */
-  InputStream eventStream() throws IOException;
 }

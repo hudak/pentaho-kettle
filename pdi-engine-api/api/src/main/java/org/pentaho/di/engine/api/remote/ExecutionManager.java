@@ -1,5 +1,7 @@
 package org.pentaho.di.engine.api.remote;
 
+import java.io.IOException;
+import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,11 +29,12 @@ public interface ExecutionManager {
   /**
    * Submit a transformation to this execution manager.
    * <p>
-   * If submission was successful, a unique service property will be returned, which can then be used to locate
-   * the {@link Execution} created from this request.
+   * If submission was successful, a server socket address will be returned, which can then be used to
+   * stream events
    *
    * @param request {@link ExecutionRequest}
-   * @return endpointId used to locate an {@link Execution}
+   * @return URI with the format tcp://$host:$port
+   * @throws IOException Request could not be submitted event stream server could not start
    */
-  CompletableFuture<String> submit( ExecutionRequest request );
+  URI submit( ExecutionRequest request ) throws IOException;
 }
